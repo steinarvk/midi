@@ -15,6 +15,7 @@ import (
 var (
 	scanPath     = flag.String("path", "", "MIDI file scan path (dir or file)")
 	logSuccesses = flag.Bool("log_success", false, "log individual parsing successes")
+	showFiles    = flag.Bool("show_files", false, "log contents of tracks")
 	verbose      = flag.Bool("verbose", false, "very detailed logging")
 )
 
@@ -56,6 +57,14 @@ func main() {
 		} else {
 			if *logSuccesses {
 				log.Printf("parsing %q: ok: %v", path, data)
+			}
+			if *showFiles {
+				log.Printf("showing file %q", path)
+				for i, track := range data.Tracks {
+					for j, event := range track.Events {
+						log.Printf("trk % 2d evt % 8d %v", i, j, event)
+					}
+				}
 			}
 			successes++
 			successSize += info.Size()

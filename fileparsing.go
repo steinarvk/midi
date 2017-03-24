@@ -19,7 +19,7 @@ type Header struct {
 }
 
 type Track struct {
-	// TODO
+	Events []interface{}
 }
 
 type File struct {
@@ -223,9 +223,18 @@ func parseTrack(r io.Reader) (*Track, bool, error) {
 		return nil, true, err
 	}
 
-	_, err = parseTrackBody(trackReader)
+	rawEvents, err := parseTrackBody(trackReader)
 	if err != nil {
 		return nil, true, err
+	}
+
+	for _, evt := range rawEvents {
+		presentable, err := presentEvent(evt)
+		if err != nil {
+			return nil, true, err
+		}
+
+		rv.Events = append(rv.Events, presentable)
 	}
 
 	// Throw away events returned from parseTrackBody!
