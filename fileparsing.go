@@ -19,7 +19,7 @@ type Header struct {
 }
 
 type Track struct {
-	Events []interface{}
+	Events []Event
 }
 
 type File struct {

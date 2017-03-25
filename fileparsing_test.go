@@ -71,3 +71,26 @@ func TestParseFullFile(t *testing.T) {
 		t.Errorf("parse(%02x, true) = err: %v", data, err)
 	}
 }
+
+func TestParseRoundtrip(t *testing.T) {
+	data := append(
+		[]byte("MThd\x00\x00\x00\x06\x00\x01\x00\x02\x00\xc0"),
+		append(
+			[]byte("MTrk\x00\x00\x00\x04\x00\xff\x2f\x00"),
+			[]byte("MTrk\x00\x00\x00\x04\x0a\x90\x3C\x7F")...)...)
+
+	f, err := parse(bytes.NewBuffer(data), true)
+	if err != nil {
+		t.Fatalf("parse(%02x, true) = err: %v", data, err)
+	}
+
+	encodedData, err := f.encode()
+	if err != nil {
+		t.Fatalf("f.encode() = err: %v", data, err)
+	}
+
+	_, err = parse(bytes.NewBuffer(encodedData), true)
+	if err != nil {
+		t.Fatalf("parse(%q, true) = err: %v", encodedData, err)
+	}
+}

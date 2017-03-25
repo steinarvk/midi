@@ -1,6 +1,7 @@
 package midi
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -10,6 +11,33 @@ type SysexEvent []byte
 type MetaEvent struct {
 	Type byte
 	Data []byte
+}
+
+type Event interface {
+	EncodeMIDI() ([]byte, error)
+}
+
+func (td TimeDeltaEvent) EncodeMIDI() ([]byte, error) {
+	return encodeVarint(uint64(td)), nil
+}
+
+func (e SysexEvent) EncodeMIDI() ([]byte, error) {
+	if len(e) == 0 {
+		return nil, errors.New("empty SysexEvent")
+	}
+	rv := []byte{e[0]}
+	rv = append(rv, encodeVarint(uint64(len(e)-1))...)
+	if len(e) > 1 {
+		rv = append(rv, e[1:]...)
+	}
+	return rv, nil
+}
+
+func (e MetaEvent) EncodeMIDI() ([]byte, error) {
+	rv := []byte{0xFF, e.Type}
+	rv = append(rv, encodeVarint(uint64(len(e.Data)))...)
+	rv = append(rv, e.Data...)
+	return rv, nil
 }
 
 type MIDIEventType byte
@@ -42,7 +70,7 @@ type MIDIEvent struct {
 	RawData []byte
 }
 
-func presentEvent(evt event) (interface{}, error) {
+func presentEvent(evt event) (Event, error) {
 	switch evt.kind {
 	case sysexEvent:
 		return SysexEvent(append([]byte{evt.typeByte}, evt.data...)), nil
@@ -172,4 +200,22 @@ func (e MIDIEvent) String() string {
 		}
 		return prefix + fmt.Sprintf("%s % 02x", desc, e.RawData)
 	}
+}
+
+func (e MIDIEvent) EncodeMIDI() ([]byte, error) {
+	rawData := e.RawData
+	if rawData == nil {
+		switch e.Type {
+		case NoteOn:
+			rawData = []byte{byte(e.Key), byte(e.Velocity)}
+		case NoteOff:
+			rawData = []byte{byte(e.Key), byte(e.Velocity)}
+		default:
+			return nil, fmt.Errorf("encoding not implemented for %v", e)
+		}
+	}
+
+	rawType := byte(e.Type) | byte(e.Channel)
+
+	return append([]byte{rawType}, rawData...), nil
 }
