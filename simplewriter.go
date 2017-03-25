@@ -3,11 +3,11 @@ package midi
 import "io"
 
 type SimpleWriter struct {
-	divisions uint16
+	divisions int16
 	events    []Event
 }
 
-func NewSimpleWriter(divisions uint16) *SimpleWriter {
+func NewSimpleWriter(divisions int16) *SimpleWriter {
 	return &SimpleWriter{divisions: divisions}
 }
 

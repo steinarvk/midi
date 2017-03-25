@@ -15,7 +15,7 @@ import (
 type Header struct {
 	Format         uint16
 	NumberOfTracks uint16
-	Division       uint16
+	Division       int16
 }
 
 type Track struct {
@@ -239,6 +239,49 @@ func parseTrack(r io.Reader) (*Track, bool, error) {
 
 	// Throw away events returned from parseTrackBody!
 	return rv, true, nil
+}
+
+func (f *File) OnEvents(trackNo int, callback func(float64, Event) error) error {
+	if f.Header.Division < 0 {
+		return fmt.Errorf("SMPTE divisions (%v) are unimplemented (TODO)", f.Header.Division)
+	}
+
+	ticksPerBeat := f.Header.Division
+	microsPerBeat := DefaultTempo
+
+	if trackNo < 0 || trackNo >= len(f.Tracks) {
+		return fmt.Errorf("no such track: %d (there are %d tracks)", trackNo, len(f.Tracks))
+	}
+
+	track := f.Tracks[trackNo]
+
+	var seconds float64
+
+	for i, evt := range track.Events {
+		if err := callback(seconds, evt); err != nil {
+			return fmt.Errorf("error handling event #%d at %fs: %v", i, seconds, err)
+		}
+
+		switch v := evt.(type) {
+		case TimeDeltaEvent:
+			ticksTaken := float64(v)
+			beatsTaken := ticksTaken / float64(ticksPerBeat)
+			microsTaken := beatsTaken * float64(microsPerBeat)
+			secsTaken := microsTaken / 1e6
+			seconds += secsTaken
+
+		case MetaEvent:
+			newTempo, ok := v.GetTempo()
+			if ok {
+				microsPerBeat = newTempo
+			}
+
+		default:
+			// Do nothing
+		}
+	}
+
+	return nil
 }
 
 func parseTrackBody(r io.Reader) ([]event, error) {

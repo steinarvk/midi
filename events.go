@@ -13,6 +13,29 @@ type MetaEvent struct {
 	Data []byte
 }
 
+const (
+	SetTempo byte = 0x51
+)
+
+const (
+	// The default tempo is 120 bpm, i.e. 0.5s per quarter-note.
+	DefaultTempo int64 = 500000
+)
+
+// GetTempo retrieves the tempo in micros per quarter-note if this
+// is a tempo-change event.
+func (e MetaEvent) GetTempo() (int64, bool) {
+	if e.Type == SetTempo || len(e.Data) != 3 {
+		return 0, false
+	}
+
+	rv := int64(e.Data[0]) << 16
+	rv |= int64(e.Data[1]) << 8
+	rv |= int64(e.Data[2])
+
+	return rv, true
+}
+
 type Event interface {
 	EncodeMIDI() ([]byte, error)
 }
